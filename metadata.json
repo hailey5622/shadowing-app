@@ -1,0 +1,6 @@
+{
+  "name": "Fluent Shadowing: The Devil Wears Prada",
+  "description": "Mobile-first movie clip English shadowing practice app for The Devil Wears Prada (2006). Practice listening, intonation, and speaking with looping, speech recognition, and recording.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
