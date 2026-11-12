@@ -1,0 +1,698 @@
+export interface WordStressDetail {
+  word: string;
+  isStressed: boolean;
+  stressType: 'primary' | 'secondary' | 'unstressed';
+  pitchLevel: 'high' | 'mid' | 'low';
+  contourIcon: '↗' | '↘' | '→' | '↷';
+  targetEnergyPercent: number; // 20 to 100
+  phoneticTip: string;
+}
+
+export interface IntonationCoaching {
+  overallTone: string;
+  pitchPatternName: string;
+  endingTone: 'falling' | 'rising' | 'flat';
+  endingToneDesc: string;
+  stressSummary: string;
+  characterVocalStyle: string;
+  commonMistakes: string[];
+  detailedFixes: string[];
+  words: WordStressDetail[];
+  modelPitchContour: number[]; // 5 to 7 normalized points (0-100) for SVG curve
+}
+
+export const INTONATION_COACHING_DATA: Record<number, IntonationCoaching> = {
+  1: {
+    overallTone: '단호하고 차가운 하강조 (Icy Falling Contour ↘)',
+    pitchPatternName: 'High Fall (급격한 하강조)',
+    endingTone: 'falling',
+    endingToneDesc: '의문문이지만 끝을 올리지 않고 아래로 뚝 떨어뜨림 (↘)',
+    stressSummary: 'Who에 95% 강세 폭발, are you는 저음으로 낮추어 하강',
+    characterVocalStyle: '미란다 프리슬리의 시그니처 톤: 감정을 배제한 나지막하고 서늘한 발성',
+    commonMistakes: [
+      '의문문(Question)이라고 끝 단어 "you? ↗"를 위로 올리는 실수 (한국인 학습자의 80%가 실수하는 부분)',
+      '"are"를 [아-르]처럼 너무 길고 또박또박 발음하여 리듬이 늘어지는 현상',
+    ],
+    detailedFixes: [
+      '[강세 교정] 첫 단어 "Who"의 시작 음정을 평소 말할 때보다 1.5배 높게 잡고 강한 호흡을 실어주세요.',
+      '[억양 교정] "are you"로 가면서 계단을 내려오듯 음정을 뚝 떨어뜨려 [후↘ 아 유↘]로 툭 던지듯 끝맺으세요.',
+      '[약화 교정] 중간의 "are"는 약화음 [ər]로 0.2초 만에 스치듯 넘겨야 합니다.',
+    ],
+    words: [
+      {
+        word: 'Who',
+        isStressed: true,
+        stressType: 'primary',
+        pitchLevel: 'high',
+        contourIcon: '↷',
+        targetEnergyPercent: 100,
+        phoneticTip: '성대를 순간 긴장시키며 최고 음정으로 강하게 어택!',
+      },
+      {
+        word: 'are',
+        isStressed: false,
+        stressType: 'unstressed',
+        pitchLevel: 'low',
+        contourIcon: '↘',
+        targetEnergyPercent: 30,
+        phoneticTip: '[ər]로 힘을 빼고 0.2초 만에 빠르게 약화',
+      },
+      {
+        word: 'you?',
+        isStressed: true,
+        stressType: 'secondary',
+        pitchLevel: 'low',
+        contourIcon: '↘',
+        targetEnergyPercent: 65,
+        phoneticTip: '올리지 말고 바닥으로 무겁게 가라앉히며 하강 마무리',
+      },
+    ],
+    modelPitchContour: [95, 75, 45, 30, 20],
+  },
+  2: {
+    overallTone: '정중하고 조심스러운 소개 억양 (Polite Rise-Fall ↗↘)',
+    pitchPatternName: 'Rise-Fall (상승 후 안정적 하강)',
+    endingTone: 'falling',
+    endingToneDesc: '문장 끝 Sacks에서 차분하게 하강하여 단정한 마침표 형성',
+    stressSummary: 'name과 Andy Sacks에 정점, My와 is는 낮고 가볍게',
+    characterVocalStyle: '앤디의 면접관 앞 첫 인사: 긴장감이 묻어나는 또렷하고 조심스러운 어조',
+    commonMistakes: [
+      '"My"를 크게 읽어 정작 중요한 "name"의 강세가 묻히는 경우',
+      '"Andy Sacks"를 단조로운 평음으로 읽어 이름이 귀에 꽂히지 않는 경우',
+    ],
+    detailedFixes: [
+      '[강세 교정] "My"는 낮게 출발하고 "name"에서 음정을 확 끌어올려 주세요.',
+      '[연음 교정] "name is"를 끊지 말고 [네이미즈]로 자연스럽게 링크(연음)하세요.',
+      '[리듬 교정] "Andy"의 첫 음절 [AN-]과 "Sacks"의 [SACKS]에 각각 분명한 타격을 줍니다.',
+    ],
+    words: [
+      {
+        word: 'My',
+        isStressed: false,
+        stressType: 'unstressed',
+        pitchLevel: 'low',
+        contourIcon: '→',
+        targetEnergyPercent: 35,
+        phoneticTip: '낮은 음정으로 조용히 시작',
+      },
+      {
+        word: 'name',
+        isStressed: true,
+        stressType: 'primary',
+        pitchLevel: 'high',
+        contourIcon: '↗',
+        targetEnergyPercent: 90,
+        phoneticTip: '첫 번째 피크! 음정을 올려 또렷하게 발음',
+      },
+      {
+        word: 'is',
+        isStressed: false,
+        stressType: 'unstressed',
+        pitchLevel: 'low',
+        contourIcon: '↘',
+        targetEnergyPercent: 25,
+        phoneticTip: '[z] 유성음으로 name과 부드럽게 연음',
+      },
+      {
+        word: 'Andy',
+        isStressed: true,
+        stressType: 'primary',
+        pitchLevel: 'high',
+        contourIcon: '↗',
+        targetEnergyPercent: 95,
+        phoneticTip: '[AN-]에 핵심 강세, -dy는 살짝 낮추기',
+      },
+      {
+        word: 'Sacks.',
+        isStressed: true,
+        stressType: 'secondary',
+        pitchLevel: 'mid',
+        contourIcon: '↘',
+        targetEnergyPercent: 70,
+        phoneticTip: '끝소리 [ks]를 흘리지 않고 깔끔하게 닫으며 하강',
+      },
+    ],
+    modelPitchContour: [30, 85, 40, 95, 60, 25],
+  },
+  3: {
+    overallTone: '자랑스러운 이력 설명 억양 (Rhythmic Staircase ↗↗↘)',
+    pitchPatternName: 'Rhythmic Ladder (리드미컬한 상승-하강)',
+    endingTone: 'falling',
+    endingToneDesc: 'University 끝음에서 단정하게 착지',
+    stressSummary: 'RE-cently, GRA-duated, NORTH-western, uni-VER-sity 4박자 비트',
+    characterVocalStyle: '앤디가 자신의 최고 강점(명문대 졸업)을 어필하려는 자부심 섞인 톤',
+    commonMistakes: [
+      '"from"을 [프롬]으로 강하게 읽어 문장 전체 템포가 지체되는 실수',
+      '"graduated"의 철자 전체를 동일한 세기로 읽어 강세 위치가 불분명한 실수',
+    ],
+    detailedFixes: [
+      '[강세 교정] "RE-cently"의 첫 음절, "GRA-duated"의 첫 음절에 확실한 무게 중심을 두세요.',
+      '[약화 교정] "from"은 철자 그대로 읽지 말고 약화형 [frəm]으로 0.1초 만에 넘기세요.',
+      '[핵심 강세] "University"의 제1강세는 [VER]에 있습니다! [유니-VER-시티]로 정점을 찍으세요.',
+    ],
+    words: [
+      {
+        word: 'I',
+        isStressed: false,
+        stressType: 'unstressed',
+        pitchLevel: 'low',
+        contourIcon: '→',
+        targetEnergyPercent: 25,
+        phoneticTip: '가볍고 짧게 시작',
+      },
+      {
+        word: 'recently',
+        isStressed: true,
+        stressType: 'primary',
+        pitchLevel: 'high',
+        contourIcon: '↗',
+        targetEnergyPercent: 85,
+        phoneticTip: '[RE-]에 강한 액센트, -cently는 부드럽게',
+      },
+      {
+        word: 'graduated',
+        isStressed: true,
+        stressType: 'primary',
+        pitchLevel: 'high',
+        contourIcon: '↷',
+        targetEnergyPercent: 90,
+        phoneticTip: '[GRA-ju-ated] 첫 음절에 턱을 살짝 내리며 강조',
+      },
+      {
+        word: 'from',
+        isStressed: false,
+        stressType: 'unstressed',
+        pitchLevel: 'low',
+        contourIcon: '↘',
+        targetEnergyPercent: 20,
+        phoneticTip: '[frəm] 약화! 거의 소리가 안 날 정도로 스치듯',
+      },
+      {
+        word: 'Northwestern',
+        isStressed: true,
+        stressType: 'primary',
+        pitchLevel: 'high',
+        contourIcon: '↗',
+        targetEnergyPercent: 95,
+        phoneticTip: '[NORTH-]에 강력한 제1강세',
+      },
+      {
+        word: 'University.',
+        isStressed: true,
+        stressType: 'primary',
+        pitchLevel: 'mid',
+        contourIcon: '↘',
+        targetEnergyPercent: 80,
+        phoneticTip: '[-VER-]에 최고 음정 후 -sity에서 차분히 하강',
+      },
+    ],
+    modelPitchContour: [25, 80, 85, 30, 95, 75, 20],
+  },
+  4: {
+    overallTone: '회의적이고 날카로운 추궁 억양 (Sharp Interrogation ↘)',
+    pitchPatternName: 'Steep Fall (가파른 하강)',
+    endingTone: 'falling',
+    endingToneDesc: 'here에서 턱을 낮추며 단호하게 아래로 종결',
+    stressSummary: 'what과 doing에 비수 꽂듯 강세, here에서 싸늘하게 마무리',
+    characterVocalStyle: '미란다: 패션지 런웨이 사무실에 어울리지 않는 앤디를 경계하는 표정과 눈빛',
+    commonMistakes: [
+      '"And what are you"를 너무 정직하게 한 음절씩 끊어 읽는 실수',
+      '문장 끝 "here? ↗"를 올려서 친절한 질문처럼 들리게 만드는 실수',
+    ],
+    detailedFixes: [
+      '[연음 교정] "And what are you"는 [앤 와라유]처럼 하나의 덩어리로 부드럽게 말려들어가야 합니다.',
+      '[강세 교정] "doing"의 [DO-]에 강한 압력을 주고, "here"는 서늘하게 툭 떨어뜨리세요.',
+    ],
+    words: [
+      {
+        word: 'And',
+        isStressed: false,
+        stressType: 'unstressed',
+        pitchLevel: 'low',
+        contourIcon: '→',
+        targetEnergyPercent: 25,
+        phoneticTip: '낮고 짧게 연결',
+      },
+      {
+        word: 'what',
+        isStressed: true,
+        stressType: 'primary',
+        pitchLevel: 'high',
+        contourIcon: '↗',
+        targetEnergyPercent: 90,
+        phoneticTip: '의문사 강세! 단호하게 음정 상승',
+      },
+      {
+        word: 'are you',
+        isStressed: false,
+        stressType: 'unstressed',
+        pitchLevel: 'low',
+        contourIcon: '↘',
+        targetEnergyPercent: 30,
+        phoneticTip: '[아유]로 묶어 빠르게 축약',
+      },
+      {
+        word: 'doing',
+        isStressed: true,
+        stressType: 'primary',
+        pitchLevel: 'high',
+        contourIcon: '↷',
+        targetEnergyPercent: 95,
+        phoneticTip: '[DO-]에 강한 체중을 실어 압박',
+      },
+      {
+        word: 'here?',
+        isStressed: true,
+        stressType: 'secondary',
+        pitchLevel: 'low',
+        contourIcon: '↘',
+        targetEnergyPercent: 70,
+        phoneticTip: '올리지 말고 낮게 내리며 침묵으로 이어지게',
+      },
+    ],
+    modelPitchContour: [30, 90, 40, 95, 30],
+  },
+  5: {
+    overallTone: '자신감을 담은 조심스러운 설득조 (Hesitant Persuasion ↗)',
+    pitchPatternName: 'Step-up and Resolve',
+    endingTone: 'falling',
+    endingToneDesc: 'assistant의 2음절 강세 후 부드러운 하강',
+    stressSummary: 'Well(호흡 정리) → think(소신) → good job(자신감) → assistant(핵심 직무)',
+    characterVocalStyle: '앤디: 위축되면서도 자신의 실력과 잠재력을 침착하게 어필',
+    commonMistakes: [
+      '"as your"를 [애즈 유어]로 또박또박 발음하여 호흡이 끊기는 실수',
+      '"assistant"의 1음절 [a-]에 힘을 주는 실수 (강세는 2음절 [sis]!)',
+    ],
+    detailedFixes: [
+      '[도입부] "Well," 뒤에 0.3초의 짧은 숨을 고르는 쉼(Pause)을 주며 톤을 잡으세요.',
+      '[연음/약화] "I could do a"는 [아이 쿠두 어]처럼 물 흐르듯 가볍게 통과해야 합니다.',
+      '[강세 집중] "good job"은 두 단어 모두 강하게 짚고, "assistant"는 [uh-SIS-tent]로 [SIS]에 정점을 두세요.',
+    ],
+    words: [
+      {
+        word: 'Well,',
+        isStressed: false,
+        stressType: 'unstressed',
+        pitchLevel: 'mid',
+        contourIcon: '→',
+        targetEnergyPercent: 40,
+        phoneticTip: '한 템포 쉬며 부드럽게 생각 정리',
+      },
+      {
+        word: 'I think',
+        isStressed: true,
+        stressType: 'secondary',
+        pitchLevel: 'high',
+        contourIcon: '↗',
+        targetEnergyPercent: 75,
+        phoneticTip: '[think]에 가벼운 음정 상승',
+      },
+      {
+        word: 'I could do a',
+        isStressed: false,
+        stressType: 'unstressed',
+        pitchLevel: 'low',
+        contourIcon: '↘',
+        targetEnergyPercent: 30,
+        phoneticTip: '빠르게 굴러가는 기능어 덩어리',
+      },
+      {
+        word: 'good job',
+        isStressed: true,
+        stressType: 'primary',
+        pitchLevel: 'high',
+        contourIcon: '↗',
+        targetEnergyPercent: 95,
+        phoneticTip: '자신감 있게 두 단어 모두 또렷한 액센트',
+      },
+      {
+        word: 'as your',
+        isStressed: false,
+        stressType: 'unstressed',
+        pitchLevel: 'low',
+        contourIcon: '↘',
+        targetEnergyPercent: 25,
+        phoneticTip: '[æz jər] 약화 처리',
+      },
+      {
+        word: 'assistant.',
+        isStressed: true,
+        stressType: 'primary',
+        pitchLevel: 'mid',
+        contourIcon: '↘',
+        targetEnergyPercent: 85,
+        phoneticTip: '[uh-SIS-tent] 2번째 음절에 정점 찍고 안정적 하강',
+      },
+    ],
+    modelPitchContour: [50, 75, 35, 90, 30, 80, 20],
+  },
+  6: {
+    overallTone: '명확한 포부와 목적 진술 (Clear Statement ↘)',
+    pitchPatternName: 'Goal-Oriented Contour',
+    endingTone: 'falling',
+    endingToneDesc: 'journalist 끝에서 안정적으로 가라앉음',
+    stressSummary: 'New York(도착지)과 journalist(꿈의 직업)에 최고 강세 배분',
+    characterVocalStyle: '앤디: 내가 패션이 아닌 저널리즘을 위해 뉴욕에 왔다는 솔직한 고백',
+    commonMistakes: [
+      '"to be a"를 [투 비 어]로 딱딱하게 읽어 속도가 처지는 문제',
+      '"journalist"의 끝을 [저널리스트]로 모음[으]를 붙여 발음하는 현상',
+    ],
+    detailedFixes: [
+      '[단어 축약] "to be a"는 [tə bi ə]로 세 단어가 0.3초 만에 연결되어야 합니다.',
+      '[핵심 강세] "New York"에서 [York]에 힘을 싣고, "JOUR-nalist"의 첫 음절에 강세를 폭발시키세요.',
+    ],
+    words: [
+      {
+        word: 'I came to',
+        isStressed: false,
+        stressType: 'unstressed',
+        pitchLevel: 'low',
+        contourIcon: '→',
+        targetEnergyPercent: 35,
+        phoneticTip: '자연스러운 연결 도입',
+      },
+      {
+        word: 'New York',
+        isStressed: true,
+        stressType: 'primary',
+        pitchLevel: 'high',
+        contourIcon: '↗',
+        targetEnergyPercent: 90,
+        phoneticTip: '[York]에 볼륨과 길이를 실어 명확히 발음',
+      },
+      {
+        word: 'to be a',
+        isStressed: false,
+        stressType: 'unstressed',
+        pitchLevel: 'low',
+        contourIcon: '↘',
+        targetEnergyPercent: 25,
+        phoneticTip: '[tə bi ə] 초고속 약화',
+      },
+      {
+        word: 'journalist.',
+        isStressed: true,
+        stressType: 'primary',
+        pitchLevel: 'high',
+        contourIcon: '↘',
+        targetEnergyPercent: 95,
+        phoneticTip: '[JOUR-] 첫 음절에 80% 이상의 에너지 집중',
+      },
+    ],
+    modelPitchContour: [35, 90, 30, 95, 25],
+  },
+  7: {
+    overallTone: '다급하고 숨 가쁜 서사 억양 (Rapid Narrative Flow ↗↘)',
+    pitchPatternName: 'Narrative Wave (물결형 서사 곡선)',
+    endingTone: 'falling',
+    endingToneDesc: 'Elias에서 하강하며 상황 정리',
+    stressSummary: 'everywhere(광범위함) → finally(극적인 순간) → call(핵심) → Elias(회사명)',
+    characterVocalStyle: '앤디: 수백 군데 이력서를 넣고 막다른 골목에 다다른 현실적인 설명',
+    commonMistakes: [
+      '"got a call from"에서 단어마다 끊겨 호흡이 부자연스러워지는 현상',
+      '"finally"의 강세를 놓치고 밋밋하게 지나가는 실수',
+    ],
+    detailedFixes: [
+      '[플래핑 연음] "got a"는 [가러]로 부드럽게 혀를 튕겨 [가러 콜 프럼]으로 단번에 연결하세요.',
+      '[감정 실기] "finally"의 [FI-nally]를 약간 길게 끌어주면 극적인 안도감이 살아납니다.',
+    ],
+    words: [
+      {
+        word: 'And sent letters out',
+        isStressed: false,
+        stressType: 'unstressed',
+        pitchLevel: 'mid',
+        contourIcon: '→',
+        targetEnergyPercent: 45,
+        phoneticTip: '행동 서술, 리듬감 있게 전진',
+      },
+      {
+        word: 'everywhere',
+        isStressed: true,
+        stressType: 'primary',
+        pitchLevel: 'high',
+        contourIcon: '↗',
+        targetEnergyPercent: 90,
+        phoneticTip: '[EV-ery-where] 1음절 강세',
+      },
+      {
+        word: 'and',
+        isStressed: false,
+        stressType: 'unstressed',
+        pitchLevel: 'low',
+        contourIcon: '→',
+        targetEnergyPercent: 20,
+        phoneticTip: '아주 짧은 연결음',
+      },
+      {
+        word: 'finally',
+        isStressed: true,
+        stressType: 'primary',
+        pitchLevel: 'high',
+        contourIcon: '↷',
+        targetEnergyPercent: 95,
+        phoneticTip: '[FI-]를 살짝 늘이며 극적 전환',
+      },
+      {
+        word: 'got a call',
+        isStressed: true,
+        stressType: 'primary',
+        pitchLevel: 'high',
+        contourIcon: '↗',
+        targetEnergyPercent: 85,
+        phoneticTip: '[가러 콜] 연음으로 한 단어처럼',
+      },
+      {
+        word: 'from Elias.',
+        isStressed: true,
+        stressType: 'secondary',
+        pitchLevel: 'mid',
+        contourIcon: '↘',
+        targetEnergyPercent: 75,
+        phoneticTip: '[eh-LY-us] 2음절 강세 후 하강',
+      },
+    ],
+    modelPitchContour: [45, 85, 30, 95, 80, 40, 20],
+  },
+  8: {
+    overallTone: '솔직 담백한 양자택일 억양 (Candid Contrast ↗↘)',
+    pitchPatternName: 'Contrastive Stress (대조 강세)',
+    endingTone: 'falling',
+    endingToneDesc: 'Universe 끝에서 체념하듯 하강',
+    stressSummary: 'Basically(솔직함)와 this(런웨이), Auto Universe(자동차 잡지)의 대조',
+    characterVocalStyle: '앤디: 꾸밈없는 담백함과 어쩔 수 없는 처지의 아이러니',
+    commonMistakes: [
+      '"Basically"를 [베이시칼리]로 5음절로 늘려 읽는 실수 ([베이식클리] 3음절)',
+      '"this"의 핵심 대조 강세를 흘려버리는 경우',
+    ],
+    detailedFixes: [
+      '[음절 압축] "Basically"는 [BAY-si-klee] 3음절로 첫 음절에 강세를 주고 빠르게 압축하세요.',
+      '[대조 강세] "this"와 "Auto Universe"를 맞비교하듯 뚜렷한 대비를 주어야 합니다.',
+    ],
+    words: [
+      {
+        word: "Basically it's",
+        isStressed: true,
+        stressType: 'primary',
+        pitchLevel: 'high',
+        contourIcon: '↗',
+        targetEnergyPercent: 85,
+        phoneticTip: '[BAY-si-klee] 3음절 압축!',
+      },
+      {
+        word: 'this',
+        isStressed: true,
+        stressType: 'primary',
+        pitchLevel: 'high',
+        contourIcon: '↷',
+        targetEnergyPercent: 90,
+        phoneticTip: '이곳(런웨이)을 가리키는 강한 대조 악센트',
+      },
+      {
+        word: 'or',
+        isStressed: false,
+        stressType: 'unstressed',
+        pitchLevel: 'low',
+        contourIcon: '→',
+        targetEnergyPercent: 25,
+        phoneticTip: '가볍게 넘기기',
+      },
+      {
+        word: 'Auto Universe.',
+        isStressed: true,
+        stressType: 'primary',
+        pitchLevel: 'high',
+        contourIcon: '↘',
+        targetEnergyPercent: 95,
+        phoneticTip: '[AW-to YOO-ni-verse] 앞뒤 고저차를 주며 하강',
+      },
+    ],
+    modelPitchContour: [85, 90, 30, 95, 60, 20],
+  },
+  9: {
+    overallTone: '냉소적 반문 억양 (Sarcastic Incredulity ↘)',
+    pitchPatternName: 'Cold Rhetorical Drop',
+    endingTone: 'falling',
+    endingToneDesc: '일반 의문문과 달리 Runway 끝을 올리지 않고 얼어붙듯 떨어뜨림',
+    stressSummary: "don't와 read를 눌러 담고 Runway에서 비웃듯 마감",
+    characterVocalStyle: '미란다: 패션 바이블인 런웨이를 안 읽는다는 지원자에 대한 황당함과 냉소',
+    commonMistakes: [
+      '일반 의문문으로 착각하고 "Runway? ↗" 끝을 활기차게 올리는 치명적 실수',
+      '"don\'t"의 부정어 강세를 생략하고 밋밋하게 지나가는 실수',
+    ],
+    detailedFixes: [
+      '[부정어 강세] "don\'t"는 문장의 의미를 180도 바꾸는 부정어이므로 반드시 깊고 무거운 강세를 줍니다.',
+      '[냉소 억양] "So,"로 시작해 낮게 깔고, "Runway" 끝을 뚝 떨어뜨려 [런웨이↘]로 냉랭함을 연출하세요.',
+    ],
+    words: [
+      {
+        word: 'So,',
+        isStressed: false,
+        stressType: 'unstressed',
+        pitchLevel: 'low',
+        contourIcon: '→',
+        targetEnergyPercent: 40,
+        phoneticTip: '서늘하게 숨을 들이쉬며 출발',
+      },
+      {
+        word: 'you',
+        isStressed: false,
+        stressType: 'unstressed',
+        pitchLevel: 'low',
+        contourIcon: '→',
+        targetEnergyPercent: 30,
+        phoneticTip: '가볍게 통과',
+      },
+      {
+        word: "don't",
+        isStressed: true,
+        stressType: 'primary',
+        pitchLevel: 'high',
+        contourIcon: '↗',
+        targetEnergyPercent: 95,
+        phoneticTip: '핵심 부정어! 볼륨과 길이를 2배로 확장',
+      },
+      {
+        word: 'read',
+        isStressed: true,
+        stressType: 'primary',
+        pitchLevel: 'high',
+        contourIcon: '↷',
+        targetEnergyPercent: 90,
+        phoneticTip: '[riːd] 장모음으로 확실하게 압박',
+      },
+      {
+        word: 'Runway?',
+        isStressed: true,
+        stressType: 'secondary',
+        pitchLevel: 'low',
+        contourIcon: '↘',
+        targetEnergyPercent: 75,
+        phoneticTip: '올리지 마세요! 차갑게 아래로 떨어뜨립니다',
+      },
+    ],
+    modelPitchContour: [40, 35, 95, 90, 45, 20],
+  },
+  10: {
+    overallTone: '믿을 수 없다는 듯 낮게 깔리는 얼음장 억양 (Quiet Disbelief ↘)',
+    pitchPatternName: 'Low Flat-Fall (극저음 하강)',
+    endingTone: 'falling',
+    endingToneDesc: 'heard of me에서 속삭이듯 극저음으로 사라짐',
+    stressSummary: 'before today(기준점) → never(절대 강세) → heard of me(충격의 여운)',
+    characterVocalStyle: '미란다: 소리 지르지 않고도 사람을 얼어붙게 만드는 속삭이듯 낮은 카리스마',
+    commonMistakes: [
+      '"never"를 보통 세기로 말해 충격의 강도가 전달되지 않는 경우',
+      '"heard of me"의 전치사 "of"를 강하게 발음하여 리듬이 깨지는 경우',
+    ],
+    detailedFixes: [
+      '[핵심 타격] 이 문장의 심장은 "never"입니다! [NEV-er]의 첫 음절에 온 체중을 실으세요.',
+      '[연음 처리] "heard of me"는 [허더브미]로 부드럽게 감기며 끝을 속삭이듯 아래로 닫습니다.',
+    ],
+    words: [
+      {
+        word: 'And before today,',
+        isStressed: true,
+        stressType: 'secondary',
+        pitchLevel: 'mid',
+        contourIcon: '↗',
+        targetEnergyPercent: 70,
+        phoneticTip: '차분하게 시간 기준점 제시',
+      },
+      {
+        word: 'you had',
+        isStressed: false,
+        stressType: 'unstressed',
+        pitchLevel: 'low',
+        contourIcon: '→',
+        targetEnergyPercent: 25,
+        phoneticTip: '소리를 낮춰 약화',
+      },
+      {
+        word: 'never',
+        isStressed: true,
+        stressType: 'primary',
+        pitchLevel: 'high',
+        contourIcon: '↷',
+        targetEnergyPercent: 100,
+        phoneticTip: '최고 강세점! [NEV-]에 서늘한 분노와 힘 집중',
+      },
+      {
+        word: 'heard of me?',
+        isStressed: true,
+        stressType: 'secondary',
+        pitchLevel: 'low',
+        contourIcon: '↘',
+        targetEnergyPercent: 65,
+        phoneticTip: '[허더브미]로 낮게 읊조리며 종결',
+      },
+    ],
+    modelPitchContour: [50, 70, 30, 100, 45, 15],
+  },
+};
+
+// Fallback generator for custom sentences entered by the user
+export function getIntonationCoaching(sentence: { id: number; text: string; speaker: string; stress: string[] }): IntonationCoaching {
+  if (INTONATION_COACHING_DATA[sentence.id]) {
+    return INTONATION_COACHING_DATA[sentence.id];
+  }
+
+  // Dynamic analysis for custom sentence
+  const wordsRaw = sentence.text.split(/\s+/).filter(Boolean);
+  const stressPhrases = sentence.stress.map((s) => s.toLowerCase().trim());
+  const isQuestion = sentence.text.trim().endsWith('?');
+
+  const words: WordStressDetail[] = wordsRaw.map((w) => {
+    const clean = w.toLowerCase().replace(/[.,?!'"]/g, '');
+    const isStressed = stressPhrases.some((sp) => sp === clean || sp.split(/\s+/).includes(clean));
+
+    return {
+      word: w,
+      isStressed,
+      stressType: isStressed ? 'primary' : 'unstressed',
+      pitchLevel: isStressed ? 'high' : 'low',
+      contourIcon: isStressed ? '↗' : '↘',
+      targetEnergyPercent: isStressed ? 90 : 35,
+      phoneticTip: isStressed ? '강세 단어: 높은 피치와 충분한 길이' : '기능어: 약화되어 부드럽게 통과',
+    };
+  });
+
+  return {
+    overallTone: isQuestion ? '자연스러운 질문 억양 (Rising/Falling Context)' : '안정적인 진술 억양 (Declarative Falling ↘)',
+    pitchPatternName: isQuestion ? 'Question Intonation' : 'Standard Fall',
+    endingTone: isQuestion ? 'rising' : 'falling',
+    endingToneDesc: isQuestion ? '문장 끝에서 음정이 상향 또는 상황에 따라 하강' : '문장 끝에서 안정적으로 하강 (↘)',
+    stressSummary: `강세 단어 [${sentence.stress.join(', ')}]에 정점을 두고 비강세 단어는 약화`,
+    characterVocalStyle: `${sentence.speaker}의 감정과 호흡에 맞추어 쉐도잉`,
+    commonMistakes: [
+      '강세 단어와 약화 단어의 길이 및 볼륨 차이가 부족하여 밋밋해지는 현상',
+      '단어 사이의 호흡이 끊어져 연음이 부자연스러워지는 현상',
+    ],
+    detailedFixes: [
+      '굵게 표시된 핵심 단어에 목소리의 피치(높낮이)와 길이를 실어주세요.',
+      '전치사, 관사, 접속사 등은 힘을 빼고 빠르게 스치듯 발음하세요.',
+      '배우의 말하기 템포와 끝음 처리를 모방하며 억양 곡선을 따라가세요.',
+    ],
+    words,
+    modelPitchContour: [30, 85, 40, 90, 30],
+  };
+}

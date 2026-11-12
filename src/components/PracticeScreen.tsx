@@ -26,7 +26,9 @@ import {
   Check,
   AlertCircle,
   HelpCircle,
+  Radio,
 } from 'lucide-react';
+import { IntonationVisualCoach } from './IntonationVisualCoach';
 
 interface PracticeScreenProps {
   sentence: Sentence;
@@ -61,14 +63,23 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({
   const [isTextHidden, setIsTextHidden] = useState(true);
   const [isKoreanHidden, setIsKoreanHidden] = useState(false);
 
-  // Audio recording state
+  // Audio recording state (user controlled start & stop)
   const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [syncVideoWithRecord, setSyncVideoWithRecord] = useState(true);
+  const [audioVolumeLevel, setAudioVolumeLevel] = useState(0);
   const [recordedAudioUrl, setRecordedAudioUrl] = useState<string | null>(null);
   const [isPlayingMyVoice, setIsPlayingMyVoice] = useState(false);
   const [micPermissionDenied, setMicPermissionDenied] = useState(false);
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+  const recordingTimerRef = useRef<any>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<any>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
 
   // Web Speech Recognition state
   const [isSpeechSupported, setIsSpeechSupported] = useState(false);
@@ -84,8 +95,25 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({
     setSpeechFeedback(null);
     setIsPlaying(false);
     setIsRecording(false);
+    setRecordingSeconds(0);
     setIsPlayingMyVoice(false);
   }, [sentence.id]);
+
+  // Clean up audio context and recording timers on unmount
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        try {
+          audioContextRef.current.close();
+        } catch {}
+      }
+      if (micStreamRef.current) {
+        micStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
 
   // Check Web Speech API support
   useEffect(() => {
@@ -134,7 +162,6 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({
   const handleToggleLoop = () => {
     const nextLoop = !isLooping;
     setIsLooping(nextLoop);
-    // If currently playing, update segment playback loop state
     if (isPlaying && playerRef.current) {
       playerRef.current.playSegment(sentence.start, sentence.end, nextLoop, () => {
         if (!nextLoop) {
@@ -144,17 +171,20 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({
     }
   };
 
-  // Recording functionality:
-  // "plays the sentence once and records the learner's voice at the same time.
-  // Recording stops 1 second after the sentence ends. (Loop is ignored while recording.)"
-  const handleStartRecording = async () => {
+  // User-Controlled Recording Functionality:
+  // Starts when tapped, continues freely, stops ONLY when user taps Stop (or max safety timeout).
+  const handleToggleRecording = () => {
     if (isRecording) {
       stopRecording();
-      return;
+    } else {
+      startRecording();
     }
+  };
 
+  const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      micStreamRef.current = stream;
       setMicPermissionDenied(false);
 
       const mimeType = MediaRecorder.isTypeSupported('audio/webm')
@@ -186,22 +216,67 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({
         onProgressUpdated();
 
         // Release mic tracks
-        stream.getTracks().forEach((track) => track.stop());
+        if (micStreamRef.current) {
+          micStreamRef.current.getTracks().forEach((track) => track.stop());
+          micStreamRef.current = null;
+        }
       };
+
+      // Set up Web Audio Analyser for live visual waveform meter
+      try {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioCtx) {
+          const audioCtx = new AudioCtx();
+          audioContextRef.current = audioCtx;
+          const source = audioCtx.createMediaStreamSource(stream);
+          const analyser = audioCtx.createAnalyser();
+          analyser.fftSize = 64;
+          source.connect(analyser);
+          analyserRef.current = analyser;
+
+          const dataArray = new Uint8Array(analyser.frequencyBinCount);
+          const updateVolume = () => {
+            if (analyserRef.current) {
+              analyserRef.current.getByteFrequencyData(dataArray);
+              let sum = 0;
+              for (let i = 0; i < dataArray.length; i++) {
+                sum += dataArray[i];
+              }
+              const avg = sum / dataArray.length;
+              setAudioVolumeLevel(Math.min(100, Math.round((avg / 255) * 100)));
+              animationFrameRef.current = requestAnimationFrame(updateVolume);
+            }
+          };
+          updateVolume();
+        }
+      } catch (audioErr) {
+        console.warn('AudioContext visualization setup failed:', audioErr);
+      }
 
       // Start recording
       mediaRecorder.start();
       setIsRecording(true);
+      setRecordingSeconds(0);
 
-      // Play video sentence once (loop ignored during recording)
-      if (playerRef.current) {
+      // Start elapsed timer
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSeconds((prev) => {
+          // Safety cap of 120s
+          if (prev >= 120) {
+            stopRecording();
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 1000);
+
+      // If user chose to sync video playback, play the sentence segment once
+      if (syncVideoWithRecord && playerRef.current) {
         setIsPlaying(true);
         playerRef.current.playSegment(sentence.start, sentence.end, false, () => {
           setIsPlaying(false);
-          // Wait 1 second after sentence ends before stopping recording
-          setTimeout(() => {
-            stopRecording();
-          }, 1000);
+          // Video finished, but USER CONTROLS RECORDING STOP - stays recording until user taps Stop!
         });
       }
     } catch (err: any) {
@@ -212,6 +287,23 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({
   };
 
   const stopRecording = () => {
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+      try {
+        audioContextRef.current.close();
+      } catch {}
+      audioContextRef.current = null;
+    }
+
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       try {
         mediaRecorderRef.current.stop();
@@ -220,6 +312,7 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({
       }
     }
     setIsRecording(false);
+    setAudioVolumeLevel(0);
   };
 
   // Play user's recorded voice
@@ -570,7 +663,14 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({
         </div>
       </div>
 
-      {/* Record Area */}
+      {/* Intonation & Stress Visual Coach Component */}
+      <IntonationVisualCoach
+        sentence={sentence}
+        hasRecording={!!recordedAudioUrl}
+        recordedAudioDuration={recordingSeconds}
+      />
+
+      {/* Record Area (User controlled start & stop) */}
       <div className="bg-white rounded-2xl p-4 border border-pink-100 shadow-sm space-y-3.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
@@ -581,6 +681,22 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({
           </div>
           <span className="text-[11px] text-slate-500">
             {progress.recordings} recording(s) completed
+          </span>
+        </div>
+
+        {/* Sync video with recording toggle */}
+        <div className="flex items-center justify-between text-xs text-slate-600 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200/80">
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={syncVideoWithRecord}
+              onChange={(e) => setSyncVideoWithRecord(e.target.checked)}
+              className="rounded text-pink-600 focus:ring-pink-500 w-4 h-4 cursor-pointer"
+            />
+            <span className="font-semibold text-slate-800">녹음 시 영상 함께 재생</span>
+          </label>
+          <span className="text-[11px] text-slate-400">
+            {syncVideoWithRecord ? '동시 쉐도잉' : '내 페이스 단독 녹음'}
           </span>
         </div>
 
@@ -597,29 +713,64 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({
           </div>
         )}
 
-        {/* Big Record Button (at least 48px) */}
+        {/* Live Audio Visualizer while recording */}
+        {isRecording && (
+          <div className="flex items-center justify-between px-3.5 py-2.5 bg-rose-50 rounded-xl border border-rose-200 text-rose-900 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping shrink-0" />
+              <span className="font-bold text-rose-800">
+                실시간 녹음 중 ({Math.floor(recordingSeconds / 60)}:{(recordingSeconds % 60).toString().padStart(2, '0')})
+              </span>
+            </div>
+            <div className="flex items-center gap-1 h-6">
+              {[8, 16, 24, 14, 20, 10, 22].map((defaultH, i) => (
+                <span
+                  key={i}
+                  className="w-1 bg-rose-600 rounded-full transition-all duration-75"
+                  style={{
+                    height: `${Math.max(6, Math.min(24, audioVolumeLevel > 0 ? (audioVolumeLevel * (i + 1)) % 24 + 6 : defaultH))}px`,
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Big User-Controlled Record / Stop Button (at least 48px) */}
         <button
-          onClick={handleStartRecording}
-          className={`w-full min-h-[50px] h-13 rounded-xl font-semibold text-base flex items-center justify-center gap-2 transition-all shadow-md ${
+          onClick={handleToggleRecording}
+          className={`w-full min-h-[52px] h-14 rounded-xl font-semibold text-base flex items-center justify-center gap-3 transition-all shadow-md active:scale-[0.99] ${
             isRecording
-              ? 'bg-rose-600 text-white animate-pulse shadow-rose-500/30'
-              : 'bg-purple-900 hover:bg-purple-950 text-white shadow-purple-900/20 active:scale-[0.99]'
+              ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-500/30'
+              : 'bg-purple-900 hover:bg-purple-950 text-white shadow-purple-900/20'
           }`}
         >
           {isRecording ? (
             <>
-              <Square className="w-5 h-5 fill-current" />
-              <span>Recording in progress... (Tap to Stop)</span>
+              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                <Square className="w-4 h-4 fill-white" />
+              </div>
+              <div className="text-left">
+                <div className="text-sm font-bold flex items-center gap-2">
+                  <span>Stop Recording / 녹음 중지</span>
+                  <span className="font-mono text-xs px-2 py-0.5 rounded-full bg-black/30 text-white">
+                    {Math.floor(recordingSeconds / 60)}:{(recordingSeconds % 60).toString().padStart(2, '0')}
+                  </span>
+                </div>
+                <div className="text-[10px] text-rose-100 font-normal">
+                  탭하면 즉시 녹음이 종료되고 내 목소리가 저장됩니다
+                </div>
+              </div>
             </>
           ) : (
             <>
-              <div className="w-7 h-7 rounded-full bg-pink-500/30 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full bg-pink-500/30 flex items-center justify-center">
                 <Mic className="w-4 h-4 text-pink-300" />
               </div>
               <div className="text-left">
-                <div className="text-sm font-bold leading-tight">Record / 녹음하기</div>
+                <div className="text-sm font-bold leading-tight">Record / 녹음 시작</div>
                 <div className="text-[10px] text-purple-200 font-normal leading-tight">
-                  배우의 음성과 함께 녹음 후 1초 뒤 자동 종료
+                  탭하여 자유롭게 시작하고, 원하는 순간 언제든 탭하여 멈추세요
                 </div>
               </div>
             </>
