@@ -1,17 +1,19 @@
 import React from 'react';
 import { EducationalNoticeCard } from './EducationalNotice';
-import { Play, Settings2, Sparkles, Volume2, Mic, Repeat } from 'lucide-react';
+import { Play, Settings2, Sparkles, Volume2, Mic, Repeat, BarChart3 } from 'lucide-react';
 import { MOVIE_SETTINGS } from '../types';
 
 interface StartScreenProps {
   onStart: () => void;
   onEditSentences: () => void;
+  onViewSummary: () => void;
   sentenceCount: number;
 }
 
 export const StartScreen: React.FC<StartScreenProps> = ({
   onStart,
   onEditSentences,
+  onViewSummary,
   sentenceCount,
 }) => {
   return (
@@ -102,10 +104,20 @@ export const StartScreen: React.FC<StartScreenProps> = ({
           </span>
         </button>
 
-        <div className="text-center pt-1">
+        <div className="flex items-center justify-center gap-3 pt-1">
+          <button
+            onClick={onViewSummary}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-purple-700 hover:text-purple-800 hover:bg-purple-50 rounded-xl transition-colors"
+          >
+            <BarChart3 className="w-4 h-4 text-purple-500" />
+            <span>Activity Summary / 활동 요약</span>
+          </button>
+
+          <span className="text-slate-300">·</span>
+
           <button
             onClick={onEditSentences}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-slate-600 hover:text-pink-600 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 hover:text-pink-600 hover:bg-pink-50 rounded-xl transition-colors"
           >
             <Settings2 className="w-4 h-4 text-slate-400 group-hover:text-pink-500" />
             <span>Edit Sentences / 문장 편집</span>

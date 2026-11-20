@@ -1,12 +1,10 @@
-import React, { useState } from 'react';
-import { User } from '@supabase/supabase-js';
-import { createClient } from '@/lib/supabase/client';
-import { X, Sparkles, LogOut, Info } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { X, Sparkles, AlertCircle, ExternalLink } from 'lucide-react';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  user: User | null;
 }
 
 const GoogleLogo: React.FC = () => (
@@ -30,31 +28,44 @@ const GoogleLogo: React.FC = () => (
   </svg>
 );
 
-export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, user }) => {
-  const [noticeMsg, setNoticeMsg] = useState<string | null>(null);
+export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
+  const { isAuthenticated, signInWithGoogle } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [iframeOAuthUrl, setIframeOAuthUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isAuthenticated && isOpen) {
+      setErrorMsg(null);
+      setIframeOAuthUrl(null);
+      onClose();
+    }
+  }, [isAuthenticated, isOpen, onClose]);
 
   if (!isOpen) return null;
 
   const handleClose = () => {
-    setNoticeMsg(null);
+    setErrorMsg(null);
+    setIframeOAuthUrl(null);
     onClose();
   };
 
-  const handleGoogleLoginClick = () => {
-    setNoticeMsg('Google 로그인 화면 디자인이 준비되었습니다. 다음 단계에서 실제 Google OAuth를 연결할 수 있습니다.');
-  };
-
-  const handleSignOut = async () => {
+  const handleGoogleLoginClick = async () => {
+    setErrorMsg(null);
+    setIframeOAuthUrl(null);
     setIsLoading(true);
-    try {
-      const supabase = createClient();
-      await supabase.auth.signOut();
-      handleClose();
-    } catch {
-      setNoticeMsg('로그아웃 처리 중 문제가 발생했습니다.');
-    } finally {
-      setIsLoading(false);
+
+    const result = await signInWithGoogle();
+    setIsLoading(false);
+
+    if (result.error) {
+      setErrorMsg(result.error);
+      return;
+    }
+
+    // In embedded iframes, Google blocks OAuth inside the frame; provide direct new-tab link
+    if (result.url) {
+      setIframeOAuthUrl(result.url);
     }
   };
 
@@ -80,7 +91,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, user }) =
           <X className="w-4 h-4" />
         </button>
 
-        {/* Brand & Editorial Title (matches main page concept) */}
+        {/* Brand & Editorial Title */}
         <div className="text-center space-y-2 pt-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-pink-100 text-pink-700 text-[11px] font-semibold tracking-wide uppercase">
             <Sparkles className="w-3.5 h-3.5 text-pink-600" />
@@ -99,66 +110,63 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, user }) =
           </p>
         </div>
 
-        {user ? (
-          <div className="bg-white rounded-2xl p-4 border border-purple-100 shadow-2xs space-y-4">
-            <div className="space-y-1 text-center">
-              <span className="text-[11px] font-semibold text-purple-600 uppercase tracking-wider">
-                Signed in with Google
-              </span>
-              <p className="text-sm font-semibold text-slate-900 break-all">{user.email}</p>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleSignOut}
-              disabled={isLoading}
-              className="w-full min-h-[48px] rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-60"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>{isLoading ? 'Signing out...' : 'Sign Out / 로그아웃'}</span>
-            </button>
-          </div>
-        ) : (
-          <div className="bg-white/95 rounded-2xl p-5 border border-purple-100 shadow-sm space-y-4">
-            <div className="text-center space-y-1">
-              <p className="text-sm font-semibold text-slate-800">
-                Google 계정으로 간편하게 시작하세요
-              </p>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                별도의 회원가입 없이 클릭 한 번으로 로그인하고<br />
-                쉐도잉 학습 기록을 이어갈 수 있습니다.
-              </p>
-            </div>
-
-            {/* Google Only Login Button */}
-            <button
-              type="button"
-              onClick={handleGoogleLoginClick}
-              className="w-full min-h-[52px] px-4 py-3 rounded-2xl bg-white hover:bg-pink-50/40 text-slate-800 border border-pink-200/90 hover:border-pink-300 shadow-sm hover:shadow-md flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
-            >
-              <GoogleLogo />
-              <div className="text-left">
-                <div className="text-sm font-bold text-slate-900 leading-tight">
-                  Continue with Google
-                </div>
-                <div className="text-[11px] text-slate-500 font-medium leading-tight">
-                  Google 계정으로 로그인
-                </div>
-              </div>
-            </button>
-
-            {noticeMsg && (
-              <div className="p-3 rounded-xl bg-purple-50/80 border border-purple-100 text-xs text-purple-800 flex items-start gap-2">
-                <Info className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
-                <span className="leading-relaxed">{noticeMsg}</span>
-              </div>
-            )}
-
-            <p className="text-[11px] text-center text-slate-400 leading-relaxed pt-1">
-              Educational use only · ENG3088 English Shadowing
+        <div className="bg-white/95 rounded-2xl p-5 border border-purple-100 shadow-sm space-y-4">
+          <div className="text-center space-y-1">
+            <p className="text-sm font-semibold text-slate-800">
+              Google 계정으로 간편하게 시작하세요
+            </p>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              별도의 회원가입 없이 클릭 한 번으로 로그인하고<br />
+              쉐도잉 학습 기록을 이어갈 수 있습니다.
             </p>
           </div>
-        )}
+
+          {/* Google OAuth Button */}
+          <button
+            type="button"
+            onClick={handleGoogleLoginClick}
+            disabled={isLoading}
+            className="w-full min-h-[52px] px-4 py-3 rounded-2xl bg-white hover:bg-pink-50/40 text-slate-800 border border-pink-200/90 hover:border-pink-300 shadow-sm hover:shadow-md flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-60"
+          >
+            <GoogleLogo />
+            <div className="text-left">
+              <div className="text-sm font-bold text-slate-900 leading-tight">
+                {isLoading ? 'Connecting to Google...' : 'Continue with Google'}
+              </div>
+              <div className="text-[11px] text-slate-500 font-medium leading-tight">
+                Google 계정으로 로그인
+              </div>
+            </div>
+          </button>
+
+          {iframeOAuthUrl && (
+            <div className="p-3 rounded-xl bg-purple-50/90 border border-purple-200 space-y-2 text-center">
+              <p className="text-[11px] text-purple-900 leading-relaxed">
+                미리보기 창에서는 보안 정책상 Google 로그인 화면이 새 창에서 열려야 합니다.
+              </p>
+              <a
+                href={iframeOAuthUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-1.5 w-full min-h-[40px] px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold transition-colors"
+              >
+                <span>새 탭에서 Google 로그인 계속하기</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+          )}
+
+          {errorMsg && (
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          <p className="text-[11px] text-center text-slate-400 leading-relaxed pt-1">
+            Educational use only · ENG3088 English Shadowing
+          </p>
+        </div>
       </div>
     </div>
   );

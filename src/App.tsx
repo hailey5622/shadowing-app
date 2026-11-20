@@ -14,44 +14,36 @@ import { EditSentencesScreen } from './components/EditSentencesScreen';
 import { FinishScreen } from './components/FinishScreen';
 import { YouTubePlayerRef } from './components/YouTubePlayer';
 import { AuthModal } from './components/AuthModal';
-import { createClient } from '@/lib/supabase/client';
-import type { User } from '@supabase/supabase-js';
-import { Sparkles, BookOpen, Layers, LogIn, User as UserIcon } from 'lucide-react';
+import { UserProfileMenu } from './components/UserProfileMenu';
+import { ActivitySummaryScreen } from './components/ActivitySummaryScreen';
+import { useAuth } from './contexts/AuthContext';
+import { Sparkles, BookOpen, Layers, LogIn, BarChart3 } from 'lucide-react';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<ScreenType>('start');
   const [sentences, setSentences] = useState<Sentence[]>([]);
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState<number>(0);
   const [progressMap, setProgressMap] = useState<Record<number, SentenceProgress>>({});
-  const [user, setUser] = useState<User | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const listPlayerRef = useRef<YouTubePlayerRef | null>(null);
 
-  // Initialize data and Supabase auth listener on mount
+  const { isAuthenticated, justLoggedIn, clearJustLoggedIn } = useAuth();
+
+  // Initialize local sentences & progress on mount
   useEffect(() => {
     const loadedSentences = getStoredSentences();
     setSentences(loadedSentences);
     setProgressMap(getStoredProgress());
-
-    try {
-      const supabase = createClient();
-      supabase.auth.getUser().then(({ data }) => {
-        setUser(data.user ?? null);
-      });
-
-      const {
-        data: { subscription },
-      } = supabase.auth.onAuthStateChange((_event, session) => {
-        setUser(session?.user ?? null);
-      });
-
-      return () => {
-        subscription.unsubscribe();
-      };
-    } catch (err) {
-      console.warn('Supabase auth listener unavailable:', err);
-    }
   }, []);
+
+  // Redirect to main page ('start') when login completes
+  useEffect(() => {
+    if (justLoggedIn) {
+      setIsAuthModalOpen(false);
+      setCurrentScreen('start');
+      clearJustLoggedIn();
+    }
+  }, [justLoggedIn, clearJustLoggedIn]);
 
   const refreshProgress = () => {
     setProgressMap(getStoredProgress());
@@ -155,6 +147,17 @@ export default function App() {
               </button>
             )}
 
+            {currentScreen !== 'summary' && (
+              <button
+                onClick={() => setCurrentScreen('summary')}
+                className="px-2 py-1.5 rounded-lg text-purple-700 hover:bg-purple-50 transition-colors flex items-center gap-1 whitespace-nowrap"
+                title="활동 기록 요약"
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+                <span className="text-[11px]">활동요약</span>
+              </button>
+            )}
+
             {currentScreen !== 'edit' && (
               <button
                 onClick={() => setCurrentScreen('edit')}
@@ -165,33 +168,22 @@ export default function App() {
               </button>
             )}
 
-            {/* Top-right Login link: prevents navigation and opens in-place modal */}
-            <a
-              href="#login"
-              onClick={(e) => {
-                e.preventDefault();
-                setIsAuthModalOpen(true);
-              }}
-              className={`px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 whitespace-nowrap shrink-0 ${
-                user
-                  ? 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200/80'
-                  : 'text-pink-700 hover:text-pink-800 hover:bg-pink-50 border border-pink-200/80'
-              }`}
-            >
-              {user ? (
-                <>
-                  <UserIcon className="w-3.5 h-3.5 shrink-0" />
-                  <span className="text-[11px] max-w-[76px] truncate">
-                    {user.email?.split('@')[0] || 'Account'}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <LogIn className="w-3.5 h-3.5 shrink-0" />
-                  <span className="text-[11px]">로그인</span>
-                </>
-              )}
-            </a>
+            {/* Top-right Auth: User profile avatar popover on hover when logged in, Login link when logged out */}
+            {isAuthenticated ? (
+              <UserProfileMenu onOpenSummary={() => setCurrentScreen('summary')} />
+            ) : (
+              <a
+                href="#login"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setIsAuthModalOpen(true);
+                }}
+                className="px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 whitespace-nowrap shrink-0 text-pink-700 hover:text-pink-800 hover:bg-pink-50 border border-pink-200/80"
+              >
+                <LogIn className="w-3.5 h-3.5 shrink-0" />
+                <span className="text-[11px]">로그인</span>
+              </a>
+            )}
           </div>
         </header>
 
@@ -201,6 +193,7 @@ export default function App() {
             <StartScreen
               onStart={handleStartPractice}
               onEditSentences={() => setCurrentScreen('edit')}
+              onViewSummary={() => setCurrentScreen('summary')}
               sentenceCount={sentences.length}
             />
           )}
@@ -266,16 +259,24 @@ export default function App() {
                 setCurrentScreen('practice');
               }}
               onGoHome={() => setCurrentScreen('start')}
+              onViewSummary={() => setCurrentScreen('summary')}
+            />
+          )}
+
+          {currentScreen === 'summary' && (
+            <ActivitySummaryScreen
+              onGoBack={() => setCurrentScreen('start')}
+              onStartPractice={handleStartPractice}
+              onOpenLogin={() => setIsAuthModalOpen(true)}
             />
           )}
         </main>
       </div>
 
-      {/* In-place Login / Account Modal (keeps user on the current page) */}
+      {/* In-place Login Modal (keeps user on the current page until login completes) */}
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
-        user={user}
       />
     </div>
   );

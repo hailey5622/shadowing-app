@@ -1,7 +1,7 @@
 import React from 'react';
 import { Sentence, SentenceProgress } from '../types';
 import { OneLineCredit } from './EducationalNotice';
-import { Trophy, RotateCcw, Home, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Trophy, RotateCcw, Home, Sparkles, CheckCircle2, AlertCircle, BarChart3 } from 'lucide-react';
 
 interface FinishScreenProps {
   sentences: Sentence[];
@@ -9,6 +9,7 @@ interface FinishScreenProps {
   onPracticeSentence: (sentence: Sentence, index: number) => void;
   onRestartAll: () => void;
   onGoHome: () => void;
+  onViewSummary: () => void;
 }
 
 export const FinishScreen: React.FC<FinishScreenProps> = ({
@@ -17,6 +18,7 @@ export const FinishScreen: React.FC<FinishScreenProps> = ({
   onPracticeSentence,
   onRestartAll,
   onGoHome,
+  onViewSummary,
 }) => {
   // Count stats
   const completedSentences = sentences.filter(
@@ -131,8 +133,16 @@ export const FinishScreen: React.FC<FinishScreenProps> = ({
       {/* Navigation Buttons (at least 48px) */}
       <div className="space-y-2.5">
         <button
-          onClick={onRestartAll}
+          onClick={onViewSummary}
           className="w-full min-h-[48px] h-13 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-md shadow-pink-500/20 active:scale-[0.98] transition-all"
+        >
+          <BarChart3 className="w-4 h-4" />
+          <span>View Activity Summary / 활동 기록 요약 보기</span>
+        </button>
+
+        <button
+          onClick={onRestartAll}
+          className="w-full min-h-[48px] h-12 rounded-2xl bg-purple-50 hover:bg-purple-100 text-purple-800 font-semibold text-sm flex items-center justify-center gap-2 border border-purple-200 transition-colors"
         >
           <RotateCcw className="w-4 h-4" />
           <span>Review Sentences from Start / 처음부터 복습하기</span>

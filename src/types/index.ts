@@ -20,7 +20,23 @@ export interface SentenceProgress {
   status: ProgressStatus;
 }
 
-export type ScreenType = 'start' | 'list' | 'practice' | 'edit' | 'finish';
+export type ScreenType = 'start' | 'list' | 'practice' | 'edit' | 'finish' | 'summary';
+
+export type ActivityType = 'listen' | 'shadowing';
+
+export interface LearningActivity {
+  id: number | string;
+  user_id?: string;
+  activity_type: ActivityType;
+  sentence_id: number;
+  sentence_text: string;
+  speaker?: string | null;
+  step_number?: number | null;
+  playback_speed?: number | null;
+  duration_seconds?: number | null;
+  created_at: string;
+  source?: 'supabase' | 'local';
+}
 
 export type ShadowingStepId = 1 | 2 | 3 | 4;
 

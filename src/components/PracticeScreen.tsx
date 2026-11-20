@@ -9,6 +9,8 @@ import {
   getAudioRecordingUrl,
   setAudioRecordingUrl,
 } from '../services/storage';
+import { logLearningActivity } from '../services/activityService';
+import { useAuth } from '../contexts/AuthContext';
 import {
   Play,
   Pause,
@@ -72,14 +74,19 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({
   const [isPlayingMyVoice, setIsPlayingMyVoice] = useState(false);
   const [micPermissionDenied, setMicPermissionDenied] = useState(false);
 
+  const { user } = useAuth();
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const recordingTimerRef = useRef<any>(null);
+  const recordingStartTimeRef = useRef<number>(0);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<any>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
+
+  const [activityNotice, setActivityNotice] = useState<string | null>(null);
 
   // Web Speech Recognition state
   const [isSpeechSupported, setIsSpeechSupported] = useState(false);
@@ -131,7 +138,14 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({
     }
   };
 
-  // Play sentence segment
+  const triggerActivityNotice = (msg: string) => {
+    setActivityNotice(msg);
+    setTimeout(() => {
+      setActivityNotice((prev) => (prev === msg ? null : prev));
+    }, 2500);
+  };
+
+  // Play sentence segment (counts as Listening Practice)
   const handleTogglePlay = () => {
     if (!playerRef.current) return;
 
@@ -141,6 +155,18 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({
     } else {
       recordPlayCount(sentence.id);
       onProgressUpdated();
+      logLearningActivity({
+        userId: user?.id,
+        activityType: 'listen',
+        sentenceId: sentence.id,
+        sentenceText: sentence.text,
+        speaker: sentence.speaker,
+        stepNumber: currentStep,
+        playbackSpeed,
+        durationSeconds: Math.max(1, Math.round(sentence.end - sentence.start)),
+      });
+      triggerActivityNotice(user ? '듣기 학습 +1 (Supabase 저장됨)' : '듣기 학습 +1 기록됨');
+
       setIsPlaying(true);
       playerRef.current.playSegment(sentence.start, sentence.end, isLooping, () => {
         if (!isLooping) {
@@ -215,6 +241,22 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({
         recordVoiceRecording(sentence.id, currentStep, audioUrl);
         onProgressUpdated();
 
+        // Log Shadowing activity with timestamp to Supabase
+        const elapsedSec = recordingStartTimeRef.current
+          ? Math.max(1, Math.round((Date.now() - recordingStartTimeRef.current) / 1000))
+          : 1;
+        logLearningActivity({
+          userId: user?.id,
+          activityType: 'shadowing',
+          sentenceId: sentence.id,
+          sentenceText: sentence.text,
+          speaker: sentence.speaker,
+          stepNumber: currentStep,
+          playbackSpeed,
+          durationSeconds: elapsedSec,
+        });
+        triggerActivityNotice(user ? '쉐도잉 +1 (Supabase 저장됨)' : '쉐도잉 +1 기록됨');
+
         // Release mic tracks
         if (micStreamRef.current) {
           micStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -254,6 +296,7 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({
       }
 
       // Start recording
+      recordingStartTimeRef.current = Date.now();
       mediaRecorder.start();
       setIsRecording(true);
       setRecordingSeconds(0);
@@ -344,13 +387,41 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({
     audioPlayerRef.current.play().catch(() => setIsPlayingMyVoice(false));
   };
 
-  // Replay original clip segment immediately
+  // Replay original clip segment immediately (counts as Listening Practice)
   const handlePlayOriginal = () => {
     if (!playerRef.current) return;
+    recordPlayCount(sentence.id);
+    onProgressUpdated();
+    logLearningActivity({
+      userId: user?.id,
+      activityType: 'listen',
+      sentenceId: sentence.id,
+      sentenceText: sentence.text,
+      speaker: sentence.speaker,
+      stepNumber: currentStep,
+      playbackSpeed,
+      durationSeconds: Math.max(1, Math.round(sentence.end - sentence.start)),
+    });
+    triggerActivityNotice(user ? '듣기 학습 +1 (Supabase 저장됨)' : '듣기 학습 +1 기록됨');
     setIsPlaying(true);
     playerRef.current.playSegment(sentence.start, sentence.end, false, () => {
       setIsPlaying(false);
     });
+  };
+
+  // Manual shadowing log (for learners practicing out loud without mic)
+  const handleLogManualShadowing = async () => {
+    await logLearningActivity({
+      userId: user?.id,
+      activityType: 'shadowing',
+      sentenceId: sentence.id,
+      sentenceText: sentence.text,
+      speaker: sentence.speaker,
+      stepNumber: currentStep,
+      playbackSpeed,
+      durationSeconds: Math.max(1, Math.round(sentence.end - sentence.start)),
+    });
+    triggerActivityNotice(user ? '쉐도잉 +1 (Supabase 저장됨)' : '쉐도잉 +1 기록됨');
   };
 
   // Self-check handlers
@@ -679,9 +750,16 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({
               Record & Compare / 녹음 및 비교
             </h3>
           </div>
-          <span className="text-[11px] text-slate-500">
-            {progress.recordings} recording(s) completed
-          </span>
+          <div className="flex items-center gap-2">
+            {activityNotice && (
+              <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                ✓ {activityNotice}
+              </span>
+            )}
+            <span className="text-[11px] text-slate-500">
+              {progress.recordings}회 녹음
+            </span>
+          </div>
         </div>
 
         {/* Sync video with recording toggle */}
@@ -814,6 +892,16 @@ export const PracticeScreen: React.FC<PracticeScreenProps> = ({
             </span>
           </button>
         </div>
+
+        {/* Manual Shadowing Log button for speaking out loud without mic */}
+        <button
+          type="button"
+          onClick={handleLogManualShadowing}
+          className="w-full min-h-[42px] px-3 py-2 rounded-xl text-xs font-semibold text-purple-700 bg-purple-50/70 hover:bg-purple-100 border border-purple-200/80 flex items-center justify-center gap-1.5 transition-colors"
+        >
+          <Check className="w-3.5 h-3.5 text-purple-600" />
+          <span>녹음 없이 따라 말하기 완료 (+1 쉐도잉 기록)</span>
+        </button>
 
         {/* Optional Web Speech API Word Check */}
         {isSpeechSupported && (
